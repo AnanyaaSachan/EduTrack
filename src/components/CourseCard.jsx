@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 
-function CourseCard({ course }) {
+function CourseCard({ course, isEnrolled = false }) {
   return (
     <Link
       to={`/courses/${course.id}`}
@@ -14,7 +14,7 @@ function CourseCard({ course }) {
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
         {/* Enrolled badge */}
-        {course.isEnrolled && (
+        {isEnrolled && (
           <span className="absolute top-3 left-3 bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded-full">
             ✅ Enrolled
           </span>
@@ -71,7 +71,7 @@ function CourseCard({ course }) {
           </span>
 
           {/* Price or Enrolled status */}
-          {course.isEnrolled ? (
+          {isEnrolled ? (
             <span className="text-green-600 font-bold text-sm">Enrolled</span>
           ) : (
             <span className="text-blue-700 font-extrabold text-base">₹{course.price}</span>

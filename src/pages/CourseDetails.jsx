@@ -1,14 +1,11 @@
-import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import courses from "../data/courses";
 import ProgressBar from "../components/ProgressBar";
 
-function CourseDetails() {
+function CourseDetails({ enrolledCourses, progress, onEnroll, onModuleToggle }) {
   const { id } = useParams();
-  const course = courses.find((c) => c.id === parseInt(id));
-
-  // Local state for module completion
-  const [modules, setModules] = useState(course?.modules || []);
+  const courseId = parseInt(id);
+  const course = courses.find((c) => c.id === courseId);
 
   if (!course) {
     return (
@@ -18,22 +15,16 @@ function CourseDetails() {
     );
   }
 
-  const isEnrolled = course.isEnrolled;
+  // ── Enrollment check ──
+  const isEnrolled = enrolledCourses.includes(courseId);
 
-  // Toggle module completion (only if enrolled)
-  const toggleModule = (moduleId) => {
-    if (!isEnrolled) return;
-    setModules((prev) =>
-      prev.map((m) =>
-        m.id === moduleId ? { ...m, completed: !m.completed } : m
-      )
-    );
-  };
-
-  // Calculate progress (only relevant if enrolled)
-  const completedCount = modules.filter((m) => m.completed).length;
-  const totalCount = modules.length;
-  const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+  // ── Progress calculation ──
+  const completedModuleIds = progress[courseId] || [];
+  const totalCount = course.modules.length;
+  const completedCount = completedModuleIds.length;
+  const progressPercent = totalCount > 0
+    ? Math.floor((completedCount / totalCount) * 100)
+    : 0;
 
   return (
     <div className="bg-gray-50 min-h-screen page-transition">
@@ -56,7 +47,7 @@ function CourseDetails() {
             <p className="text-white/80 text-sm font-medium">
               👨‍🏫 Instructor: <span className="text-white font-semibold">{course.instructor}</span>
             </p>
-            <div className="flex items-center gap-2 text-sm">
+            <div className="flex items-center gap-2 text-sm flex-wrap">
               <span className="text-yellow-300 font-bold text-base">⭐ {course.rating}</span>
               <span className="text-blue-200">({course.reviewsCount.toLocaleString()} reviews)</span>
               <span className="text-blue-200">•</span>
@@ -82,11 +73,10 @@ function CourseDetails() {
       <section className="max-w-7xl mx-auto px-6 py-12">
         <div className="flex flex-col lg:flex-row gap-8 items-start">
 
-          {/* ── LEFT SIDE — Modules List ── */}
+          {/* ── LEFT: Modules List ── */}
           <div className="flex-1">
             <h2 className="text-2xl font-extrabold text-gray-800 mb-6">
               Course Modules
-              {/* Only show completion count if enrolled */}
               {isEnrolled && (
                 <span className="ml-3 text-sm font-medium text-gray-400">
                   ({completedCount}/{totalCount} completed)
@@ -95,70 +85,69 @@ function CourseDetails() {
             </h2>
 
             <div className="flex flex-col gap-3">
-              {modules.map((module, index) => (
-                <div
-                  key={module.id}
-                  onClick={() => toggleModule(module.id)}
-                  className={`flex items-center gap-4 p-4 rounded-xl border select-none transition-all duration-200 ${
-                    isEnrolled
-                      ? module.completed
-                        ? "bg-green-50 border-green-200 hover:bg-green-100 cursor-pointer"
-                        : "bg-white border-gray-200 hover:bg-blue-50 hover:border-blue-200 cursor-pointer"
-                      : "bg-white border-gray-200 cursor-default opacity-80"
-                  }`}
-                >
-                  {/* Checkbox / Lock icon */}
-                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all duration-200 ${
-                    isEnrolled
-                      ? module.completed
-                        ? "bg-green-500 border-green-500"
-                        : "border-gray-300 bg-white"
-                      : "border-gray-200 bg-gray-100"
-                  }`}>
-                    {isEnrolled && module.completed && (
-                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                    {!isEnrolled && (
-                      <span className="text-gray-400 text-xs">🔒</span>
+              {course.modules.map((module, index) => {
+                const isCompleted = completedModuleIds.includes(module.id);
+                return (
+                  <div
+                    key={module.id}
+                    onClick={() => isEnrolled && onModuleToggle(courseId, module.id)}
+                    className={`flex items-center gap-4 p-4 rounded-xl border select-none transition-all duration-200 ${
+                      isEnrolled
+                        ? isCompleted
+                          ? "bg-green-50 border-green-200 hover:bg-green-100 cursor-pointer"
+                          : "bg-white border-gray-200 hover:bg-blue-50 hover:border-blue-200 cursor-pointer"
+                        : "bg-white border-gray-200 cursor-default opacity-80"
+                    }`}
+                  >
+                    {/* Checkbox / Lock */}
+                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all duration-200 ${
+                      isEnrolled
+                        ? isCompleted
+                          ? "bg-green-500 border-green-500"
+                          : "border-gray-300 bg-white"
+                        : "border-gray-200 bg-gray-100"
+                    }`}>
+                      {isEnrolled && isCompleted && (
+                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                      {!isEnrolled && (
+                        <span className="text-gray-400 text-xs">🔒</span>
+                      )}
+                    </div>
+
+                    {/* Number */}
+                    <span className="text-gray-400 text-sm font-medium w-6 flex-shrink-0">
+                      {index + 1}.
+                    </span>
+
+                    {/* Title */}
+                    <span className={`text-sm font-semibold flex-1 transition-all duration-200 ${
+                      isEnrolled && isCompleted ? "text-green-700 line-through" : "text-gray-700"
+                    }`}>
+                      {module.title}
+                    </span>
+
+                    {/* Status badge */}
+                    {isEnrolled && (
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${
+                        isCompleted ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-400"
+                      }`}>
+                        {isCompleted ? "Done" : "Pending"}
+                      </span>
                     )}
                   </div>
-
-                  {/* Module number */}
-                  <span className="text-gray-400 text-sm font-medium w-6 flex-shrink-0">
-                    {index + 1}.
-                  </span>
-
-                  {/* Module title */}
-                  <span className={`text-sm font-semibold flex-1 transition-all duration-200 ${
-                    isEnrolled && module.completed
-                      ? "text-green-700 line-through"
-                      : "text-gray-700"
-                  }`}>
-                    {module.title}
-                  </span>
-
-                  {/* Status badge — only if enrolled */}
-                  {isEnrolled && (
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${
-                      module.completed
-                        ? "bg-green-100 text-green-600"
-                        : "bg-gray-100 text-gray-400"
-                    }`}>
-                      {module.completed ? "Done" : "Pending"}
-                    </span>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
-          {/* ── RIGHT SIDE — Summary Panel ── */}
+          {/* ── RIGHT: Summary Panel ── */}
           <div className="lg:w-80 flex-shrink-0">
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 sticky top-24 flex flex-col gap-5">
 
-              {/* ENROLLED: Show progress */}
+              {/* Progress (enrolled) or Price (not enrolled) */}
               {isEnrolled ? (
                 <div>
                   <div className="flex items-center justify-between mb-2">
@@ -171,7 +160,6 @@ function CourseDetails() {
                   </p>
                 </div>
               ) : (
-                /* NOT ENROLLED: Show price prominently */
                 <div className="text-center">
                   <p className="text-gray-500 text-sm mb-1">Course Price</p>
                   <span className="text-3xl font-extrabold text-gray-800">₹{course.price}</span>
@@ -182,11 +170,14 @@ function CourseDetails() {
               <div className="border-t border-gray-100" />
 
               {/* CTA Button */}
-              <button className={`w-full font-bold py-3 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer ${
-                isEnrolled
-                  ? "bg-blue-600 hover:bg-blue-700 text-white"
-                  : "bg-green-600 hover:bg-green-700 text-white"
-              }`}>
+              <button
+                onClick={() => !isEnrolled && onEnroll(courseId)}
+                className={`w-full font-bold py-3 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer ${
+                  isEnrolled
+                    ? "bg-blue-600 hover:bg-blue-700 text-white"
+                    : "bg-green-600 hover:bg-green-700 text-white"
+                }`}
+              >
                 {isEnrolled
                   ? progressPercent > 0 ? "Continue Learning" : "Start Learning"
                   : "Enroll Now"}
@@ -203,11 +194,9 @@ function CourseDetails() {
                 <div className="flex items-center justify-between">
                   <span className="text-gray-500">📊 Level</span>
                   <span className={`font-semibold px-2 py-0.5 rounded-full text-xs ${
-                    course.level === "Beginner"
-                      ? "bg-green-50 text-green-600"
-                      : course.level === "Intermediate"
-                      ? "bg-yellow-50 text-yellow-600"
-                      : "bg-red-50 text-red-500"
+                    course.level === "Beginner" ? "bg-green-50 text-green-600"
+                    : course.level === "Intermediate" ? "bg-yellow-50 text-yellow-600"
+                    : "bg-red-50 text-red-500"
                   }`}>
                     {course.level}
                   </span>
@@ -220,13 +209,6 @@ function CourseDetails() {
                   <span className="text-gray-500">⭐ Rating</span>
                   <span className="font-semibold text-gray-700">{course.rating} / 5</span>
                 </div>
-                {/* Show price in info section only if enrolled */}
-                {isEnrolled && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-500">💰 Price Paid</span>
-                    <span className="font-semibold text-gray-700">₹{course.price}</span>
-                  </div>
-                )}
               </div>
 
               <Link
