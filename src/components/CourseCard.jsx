@@ -7,12 +7,18 @@ function CourseCard({ course }) {
       className="bg-white rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 overflow-hidden flex flex-col cursor-pointer group border border-gray-100"
     >
       {/* Thumbnail */}
-      <div className="w-full h-44 overflow-hidden">
+      <div className="w-full h-44 overflow-hidden relative">
         <img
           src={course.thumbnail}
           alt={course.title}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
+        {/* Enrolled badge */}
+        {course.isEnrolled && (
+          <span className="absolute top-3 left-3 bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded-full">
+            ✅ Enrolled
+          </span>
+        )}
       </div>
 
       {/* Card Body */}
@@ -64,10 +70,12 @@ function CourseCard({ course }) {
             {course.level}
           </span>
 
-          {/* Price */}
-          <span className="text-blue-700 font-extrabold text-base">
-            ₹{course.price}
-          </span>
+          {/* Price or Enrolled status */}
+          {course.isEnrolled ? (
+            <span className="text-green-600 font-bold text-sm">Enrolled</span>
+          ) : (
+            <span className="text-blue-700 font-extrabold text-base">₹{course.price}</span>
+          )}
         </div>
 
       </div>

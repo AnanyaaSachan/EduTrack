@@ -4,7 +4,7 @@ import courses from "../data/courses";
 
 function Home() {
   return (
-    <div className="bg-gray-50 min-h-screen">
+    <div className="bg-gray-50 min-h-screen page-transition">
 
       {/* ── HERO SECTION ── */}
       <section className="bg-gradient-to-r from-blue-900 to-blue-600 py-16 px-6 text-center">

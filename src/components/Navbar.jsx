@@ -47,7 +47,7 @@ function Navbar() {
               }`
             }
           >
-            Dashboard
+            My Learning
           </NavLink>
 
           <Link
