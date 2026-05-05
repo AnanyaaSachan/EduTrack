@@ -1,13 +1,41 @@
+import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import courses from "../data/courses";
 import ProgressBar from "../components/ProgressBar";
+import { fetchCourseById } from "../services/api";
+import useAuth from "../hooks/useAuth";
 
 function CourseDetails({ enrolledCourses, progress, onEnroll, onModuleToggle }) {
   const { id } = useParams();
-  const courseId = parseInt(id);
-  const course = courses.find((c) => c.id === courseId);
+  const { user } = useAuth();
+  const [course, setCourse] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  if (!course) {
+  // ── Fetch course from backend ──
+  useEffect(() => {
+    fetchCourseById(id)
+      .then((data) => {
+        setCourse(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err.message);
+        setLoading(false);
+      });
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-gray-400">
+        <div className="text-center">
+          <p className="text-4xl mb-3">⏳</p>
+          <p className="text-lg font-semibold">Loading course...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !course) {
     return (
       <div className="min-h-screen flex items-center justify-center text-gray-500 text-lg">
         Course not found.
@@ -15,7 +43,8 @@ function CourseDetails({ enrolledCourses, progress, onEnroll, onModuleToggle }) 
     );
   }
 
-  // ── Enrollment check ──
+  // ── Use MongoDB _id ──
+  const courseId = course._id;
   const isEnrolled = enrolledCourses.includes(courseId);
 
   // ── Progress calculation ──
@@ -49,7 +78,7 @@ function CourseDetails({ enrolledCourses, progress, onEnroll, onModuleToggle }) 
             </p>
             <div className="flex items-center gap-2 text-sm flex-wrap">
               <span className="text-yellow-300 font-bold text-base">⭐ {course.rating}</span>
-              <span className="text-blue-200">({course.reviewsCount.toLocaleString()} reviews)</span>
+              <span className="text-blue-200">({course.reviewsCount?.toLocaleString()} reviews)</span>
               <span className="text-blue-200">•</span>
               <span className="text-blue-200">{course.duration}</span>
               <span className="text-blue-200">•</span>
@@ -86,11 +115,11 @@ function CourseDetails({ enrolledCourses, progress, onEnroll, onModuleToggle }) 
 
             <div className="flex flex-col gap-3">
               {course.modules.map((module, index) => {
-                const isCompleted = completedModuleIds.includes(module.id);
+                const isCompleted = completedModuleIds.includes(module._id);
                 return (
                   <div
-                    key={module.id}
-                    onClick={() => isEnrolled && onModuleToggle(courseId, module.id)}
+                    key={module._id}
+                onClick={() => isEnrolled && onModuleToggle(user?._id, courseId, module._id)}
                     className={`flex items-center gap-4 p-4 rounded-xl border select-none transition-all duration-200 ${
                       isEnrolled
                         ? isCompleted
@@ -102,9 +131,7 @@ function CourseDetails({ enrolledCourses, progress, onEnroll, onModuleToggle }) 
                     {/* Checkbox / Lock */}
                     <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all duration-200 ${
                       isEnrolled
-                        ? isCompleted
-                          ? "bg-green-500 border-green-500"
-                          : "border-gray-300 bg-white"
+                        ? isCompleted ? "bg-green-500 border-green-500" : "border-gray-300 bg-white"
                         : "border-gray-200 bg-gray-100"
                     }`}>
                       {isEnrolled && isCompleted && (
@@ -112,24 +139,17 @@ function CourseDetails({ enrolledCourses, progress, onEnroll, onModuleToggle }) 
                           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                         </svg>
                       )}
-                      {!isEnrolled && (
-                        <span className="text-gray-400 text-xs">🔒</span>
-                      )}
+                      {!isEnrolled && <span className="text-gray-400 text-xs">🔒</span>}
                     </div>
 
-                    {/* Number */}
-                    <span className="text-gray-400 text-sm font-medium w-6 flex-shrink-0">
-                      {index + 1}.
-                    </span>
+                    <span className="text-gray-400 text-sm font-medium w-6 flex-shrink-0">{index + 1}.</span>
 
-                    {/* Title */}
                     <span className={`text-sm font-semibold flex-1 transition-all duration-200 ${
                       isEnrolled && isCompleted ? "text-green-700 line-through" : "text-gray-700"
                     }`}>
                       {module.title}
                     </span>
 
-                    {/* Status badge */}
                     {isEnrolled && (
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${
                         isCompleted ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-400"
@@ -144,10 +164,9 @@ function CourseDetails({ enrolledCourses, progress, onEnroll, onModuleToggle }) 
           </div>
 
           {/* ── RIGHT: Summary Panel ── */}
-          <div className="lg:w-80 flex-shrink-0">
+          <div className="lg:w-80 flex-shrink-0 w-full">
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 sticky top-24 flex flex-col gap-5">
 
-              {/* Progress (enrolled) or Price (not enrolled) */}
               {isEnrolled ? (
                 <div>
                   <div className="flex items-center justify-between mb-2">
@@ -169,13 +188,10 @@ function CourseDetails({ enrolledCourses, progress, onEnroll, onModuleToggle }) 
 
               <div className="border-t border-gray-100" />
 
-              {/* CTA Button */}
               <button
-                onClick={() => !isEnrolled && onEnroll(courseId)}
+                onClick={() => !isEnrolled && onEnroll(user?._id, courseId)}
                 className={`w-full font-bold py-3 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer ${
-                  isEnrolled
-                    ? "bg-blue-600 hover:bg-blue-700 text-white"
-                    : "bg-green-600 hover:bg-green-700 text-white"
+                  isEnrolled ? "bg-blue-600 hover:bg-blue-700 text-white" : "bg-green-600 hover:bg-green-700 text-white"
                 }`}
               >
                 {isEnrolled
@@ -185,7 +201,6 @@ function CourseDetails({ enrolledCourses, progress, onEnroll, onModuleToggle }) 
 
               <div className="border-t border-gray-100" />
 
-              {/* Course Info */}
               <div className="flex flex-col gap-3 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-gray-500">⏱ Duration</span>

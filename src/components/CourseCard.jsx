@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 function CourseCard({ course, isEnrolled = false }) {
   return (
     <Link
-      to={`/courses/${course.id}`}
+      to={`/courses/${course._id}`}
       className="bg-white rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 overflow-hidden flex flex-col cursor-pointer group border border-gray-100"
     >
       {/* Thumbnail */}

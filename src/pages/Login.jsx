@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
+import { loginUser } from "../services/api";
 
-function Login() {
+function Login({ onLoadEnrollments }) {
   const { login } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({ name: "", email: "" });
@@ -13,14 +14,20 @@ function Login() {
     setError("");
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.name.trim() || !form.email.trim()) {
       setError("Please fill in all fields.");
       return;
     }
-    login({ name: form.name.trim(), email: form.email.trim() });
-    navigate("/dashboard");
+    try {
+      const userData = await loginUser(form.name.trim(), form.email.trim());
+      login(userData);
+      await onLoadEnrollments(userData._id);
+      navigate("/dashboard");
+    } catch (err) {
+      setError("Login failed. Please try again.");
+    }
   };
 
   return (

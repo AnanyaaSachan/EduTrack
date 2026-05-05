@@ -9,49 +9,61 @@ import Signup from './pages/Signup';
 import CourseDetails from './pages/CourseDetails';
 import Dashboard from './pages/Dashboard';
 import NotFound from './pages/NotFound';
-import { getData, setData } from './utils/localStorage';
+import { fetchUserEnrollments, enrollInCourse, toggleModuleComplete } from './services/api';
 import './index.css';
 
 function AppContent() {
-  // ── Course state (separate from auth) ──
-  const [enrolledCourses, setEnrolledCourses] = useState(
-    getData("enrolledCourses") || []
-  );
-  const [progress, setProgress] = useState(
-    getData("progress") || {}
-  );
+  // enrollments: [{ _id, courseId: {...}, completedModules: [...] }]
+  const [enrollments, setEnrollments] = useState([]);
 
-  // Auto-save to localStorage
-  useEffect(() => {
-    setData("enrolledCourses", enrolledCourses);
-  }, [enrolledCourses]);
+  // Derived: list of enrolled course IDs
+  const enrolledCourseIds = enrollments.map((e) => e.courseId?._id || e.courseId);
 
-  useEffect(() => {
-    setData("progress", progress);
-  }, [progress]);
+  // Derived: progress map { courseId: [moduleId, ...] }
+  const progress = enrollments.reduce((acc, e) => {
+    const cId = e.courseId?._id || e.courseId;
+    acc[cId] = e.completedModules || [];
+    return acc;
+  }, {});
 
-  // Enroll handler
-  const handleEnroll = (courseId) => {
-    setEnrolledCourses((prev) =>
-      prev.includes(courseId) ? prev : [...prev, courseId]
-    );
+  // Load enrollments when user logs in
+  const loadEnrollments = async (userId) => {
+    try {
+      const data = await fetchUserEnrollments(userId);
+      setEnrollments(data);
+    } catch (err) {
+      console.error("Failed to load enrollments:", err);
+    }
   };
 
-  // Module toggle handler
-  const handleModuleToggle = (courseId, moduleId) => {
-    setProgress((prev) => {
-      const courseProgress = prev[courseId] || [];
-      if (courseProgress.includes(moduleId)) {
-        return {
-          ...prev,
-          [courseId]: courseProgress.filter((id) => id !== moduleId),
-        };
-      }
-      return {
-        ...prev,
-        [courseId]: [...courseProgress, moduleId],
-      };
-    });
+  // Enroll in a course
+  const handleEnroll = async (userId, courseId) => {
+    try {
+      const enrollment = await enrollInCourse(userId, courseId);
+      setEnrollments((prev) => {
+        const exists = prev.find((e) => (e.courseId?._id || e.courseId) === courseId);
+        if (exists) return prev;
+        return [...prev, enrollment];
+      });
+    } catch (err) {
+      console.error("Enrollment failed:", err);
+    }
+  };
+
+  // Toggle module completion
+  const handleModuleToggle = async (userId, courseId, moduleId) => {
+    try {
+      const updated = await toggleModuleComplete(userId, courseId, moduleId);
+      setEnrollments((prev) =>
+        prev.map((e) =>
+          (e.courseId?._id || e.courseId) === courseId
+            ? { ...e, completedModules: updated.completedModules }
+            : e
+        )
+      );
+    } catch (err) {
+      console.error("Module toggle failed:", err);
+    }
   };
 
   return (
@@ -59,12 +71,19 @@ function AppContent() {
       <Routes>
         {/* Public routes with Navbar */}
         <Route element={<MainLayout />}>
-          <Route path="/" element={<Home enrolledCourses={enrolledCourses} />} />
+          <Route
+            path="/"
+            element={
+              <Home
+                enrolledCourses={enrolledCourseIds}
+              />
+            }
+          />
           <Route
             path="/courses/:id"
             element={
               <CourseDetails
-                enrolledCourses={enrolledCourses}
+                enrolledCourses={enrolledCourseIds}
                 progress={progress}
                 onEnroll={handleEnroll}
                 onModuleToggle={handleModuleToggle}
@@ -73,23 +92,24 @@ function AppContent() {
           />
         </Route>
 
-        {/* Protected routes with Navbar */}
+        {/* Protected routes */}
         <Route element={<MainLayout />}>
           <Route element={<ProtectedRoute />}>
             <Route
               path="/dashboard"
               element={
                 <Dashboard
-                  enrolledCourses={enrolledCourses}
+                  enrollments={enrollments}
                   progress={progress}
+                  onLoadEnrollments={loadEnrollments}
                 />
               }
             />
           </Route>
         </Route>
 
-        {/* Auth routes (no Navbar) */}
-        <Route path="/login" element={<Login />} />
+        {/* Auth routes */}
+        <Route path="/login" element={<Login onLoadEnrollments={loadEnrollments} />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

@@ -1,8 +1,8 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import courses from "../data/courses";
 import ProgressBar from "../components/ProgressBar";
+import useAuth from "../hooks/useAuth";
 
-// Today's date
 const today = new Date().toLocaleDateString("en-US", {
   weekday: "long",
   year: "numeric",
@@ -10,20 +10,30 @@ const today = new Date().toLocaleDateString("en-US", {
   day: "numeric",
 });
 
-function Dashboard({ enrolledCourses, progress }) {
-  // Only show enrolled courses
-  const myCourses = courses.filter((c) => enrolledCourses.includes(c.id));
+function Dashboard({ enrollments, progress, onLoadEnrollments }) {
+  const { user } = useAuth();
 
-  // Stats calculations
+  useEffect(() => {
+    if (user?._id) {
+      onLoadEnrollments(user._id);
+    }
+  }, [user]);
+
+  // Extract courses from enrollments
+  const myCourses = enrollments
+    .map((e) => e.courseId)
+    .filter(Boolean);
+
+  // Stats
   const totalCourses = myCourses.length;
   const completedCourses = myCourses.filter((c) => {
-    const completed = progress[c.id]?.length || 0;
+    const completed = progress[c._id]?.length || 0;
     return completed === c.modules.length && c.modules.length > 0;
   }).length;
   const overallProgress = totalCourses > 0
     ? Math.floor(
         myCourses.reduce((sum, c) => {
-          const completed = progress[c.id]?.length || 0;
+          const completed = progress[c._id]?.length || 0;
           const total = c.modules.length;
           return sum + (total > 0 ? (completed / total) * 100 : 0);
         }, 0) / totalCourses
@@ -49,7 +59,7 @@ function Dashboard({ enrolledCourses, progress }) {
         <div className="max-w-7xl mx-auto flex flex-col gap-2">
           <p className="text-blue-200 text-sm">{today}</p>
           <h1 className="text-3xl md:text-4xl font-extrabold text-white">
-            Welcome back, Ananya 👋
+            Welcome back, {user?.name || "Learner"} 👋
           </h1>
           <p className="text-blue-100 text-base mt-1">
             Continue your learning journey — every step counts! 🚀
@@ -62,14 +72,11 @@ function Dashboard({ enrolledCourses, progress }) {
 
       <div className="max-w-7xl mx-auto px-6 py-10 flex flex-col gap-12">
 
-        {/* ── STATS SECTION ── */}
+        {/* ── STATS ── */}
         <section>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {stats.map((stat, index) => (
-              <div
-                key={index}
-                className="bg-white rounded-2xl shadow-md border border-gray-100 p-5 flex flex-col gap-3 hover:shadow-lg transition-all duration-300"
-              >
+              <div key={index} className="bg-white rounded-2xl shadow-md border border-gray-100 p-5 flex flex-col gap-3 hover:shadow-lg transition-all duration-300">
                 <div className={`w-10 h-10 ${stat.bg} rounded-xl flex items-center justify-center text-xl`}>
                   {stat.icon}
                 </div>
@@ -82,7 +89,7 @@ function Dashboard({ enrolledCourses, progress }) {
           </div>
         </section>
 
-        {/* ── MY LEARNING SECTION ── */}
+        {/* ── MY LEARNING ── */}
         <section>
           <div className="mb-8">
             <h2 className="text-2xl font-extrabold text-gray-800">My Learning</h2>
@@ -99,35 +106,22 @@ function Dashboard({ enrolledCourses, progress }) {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
               {myCourses.map((course) => {
-                const completedCount = progress[course.id]?.length || 0;
+                const completedCount = progress[course._id]?.length || 0;
                 const totalCount = course.modules.length;
                 const progressPercent = totalCount > 0
                   ? Math.floor((completedCount / totalCount) * 100)
                   : 0;
 
                 return (
-                  <div
-                    key={course.id}
-                    className="bg-white rounded-2xl shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-gray-100 overflow-hidden flex flex-col group"
-                  >
-                    {/* Thumbnail */}
+                  <div key={course._id} className="bg-white rounded-2xl shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-gray-100 overflow-hidden flex flex-col group">
                     <div className="w-full h-44 overflow-hidden relative">
-                      <img
-                        src={course.thumbnail}
-                        alt={course.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
+                      <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                       {progressPercent === 100 && (
-                        <span className="absolute top-3 right-3 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                          ✅ Completed
-                        </span>
+                        <span className="absolute top-3 right-3 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">✅ Completed</span>
                       )}
                     </div>
 
-                    {/* Card Body */}
                     <div className="p-4 flex flex-col gap-3 flex-1">
-
-                      {/* Badges */}
                       <div className="flex items-center gap-2">
                         <span className={`text-xs font-semibold px-3 py-1 rounded-full ${
                           course.category === "Frontend" ? "bg-blue-50 text-blue-600"
@@ -135,27 +129,17 @@ function Dashboard({ enrolledCourses, progress }) {
                           : course.category === "Programming" ? "bg-green-50 text-green-600"
                           : course.category === "Database" ? "bg-orange-50 text-orange-600"
                           : "bg-gray-100 text-gray-600"
-                        }`}>
-                          {course.category}
-                        </span>
+                        }`}>{course.category}</span>
                         <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
                           course.level === "Beginner" ? "bg-green-50 text-green-600"
                           : course.level === "Intermediate" ? "bg-yellow-50 text-yellow-600"
                           : "bg-red-50 text-red-500"
-                        }`}>
-                          {course.level}
-                        </span>
+                        }`}>{course.level}</span>
                       </div>
 
-                      {/* Title */}
-                      <h3 className="text-gray-800 font-bold text-base leading-snug line-clamp-2">
-                        {course.title}
-                      </h3>
-
-                      {/* Instructor */}
+                      <h3 className="text-gray-800 font-bold text-base leading-snug line-clamp-2">{course.title}</h3>
                       <p className="text-gray-500 text-sm">👨‍🏫 {course.instructor}</p>
 
-                      {/* Progress Bar */}
                       <div className="mt-auto">
                         <div className="flex items-center justify-between mb-1.5">
                           <span className="text-xs text-gray-500 font-medium">Progress</span>
@@ -165,18 +149,12 @@ function Dashboard({ enrolledCourses, progress }) {
                         <p className="text-xs text-gray-400 mt-1">{completedCount}/{totalCount} modules</p>
                       </div>
 
-                      {/* Continue Button */}
                       <Link
-                        to={`/courses/${course.id}`}
+                        to={`/courses/${course._id}`}
                         className="mt-2 w-full text-center bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2.5 rounded-xl transition-all duration-300 shadow-sm hover:shadow-md"
                       >
-                        {progressPercent === 0
-                          ? "Start Learning"
-                          : progressPercent === 100
-                          ? "Review Course"
-                          : "Continue Learning →"}
+                        {progressPercent === 0 ? "Start Learning" : progressPercent === 100 ? "Review Course" : "Continue Learning →"}
                       </Link>
-
                     </div>
                   </div>
                 );
