@@ -1,4 +1,8 @@
-const BASE_URL = "http://localhost:5000/api";
+// Dev: Vite proxies /api → http://localhost:5000 (see vite.config.js).
+// Prod: set VITE_API_URL in .env (e.g. https://your-api.com/api) or defaults below.
+const BASE_URL =
+  (import.meta.env.VITE_API_URL?.replace(/\/$/, "") ||
+    (import.meta.env.DEV ? "/api" : "http://localhost:5000/api"));
 
 // ── Auth ──
 export const loginUser = async (name, email) => {
@@ -7,7 +11,16 @@ export const loginUser = async (name, email) => {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name, email }),
   });
-  if (!res.ok) throw new Error("Login failed");
+  if (!res.ok) {
+    let detail = "Login failed";
+    try {
+      const body = await res.json();
+      if (body?.message) detail = body.message;
+    } catch {
+      /* ignore */
+    }
+    throw new Error(detail);
+  }
   return res.json();
 };
 

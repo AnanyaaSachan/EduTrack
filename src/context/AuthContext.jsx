@@ -18,10 +18,25 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     setUser(null);
     localStorage.removeItem("user");
+    localStorage.removeItem("pendingEnrollmentCourseId");
+  };
+
+  // Set pending enrollment (when user tries to enroll while logged out)
+  const setPendingEnrollment = (courseId) => {
+    localStorage.setItem("pendingEnrollmentCourseId", courseId);
+  };
+
+  // Get and clear pending enrollment
+  const getPendingEnrollment = () => {
+    const courseId = localStorage.getItem("pendingEnrollmentCourseId");
+    if (courseId) {
+      localStorage.removeItem("pendingEnrollmentCourseId");
+    }
+    return courseId;
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, login, logout, setPendingEnrollment, getPendingEnrollment }}>
       {children}
     </AuthContext.Provider>
   );

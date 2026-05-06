@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import ProgressBar from "../components/ProgressBar";
 import { fetchCourseById } from "../services/api";
 import useAuth from "../hooks/useAuth";
 
 function CourseDetails({ enrolledCourses, progress, onEnroll, onModuleToggle }) {
   const { id } = useParams();
-  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { user, setPendingEnrollment } = useAuth();
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -43,12 +44,12 @@ function CourseDetails({ enrolledCourses, progress, onEnroll, onModuleToggle }) 
     );
   }
 
-  // ── Use MongoDB _id ──
+  // ── Use MongoDB _id (compare as strings — enroll state may use string ids) ──
   const courseId = course._id;
-  const isEnrolled = enrolledCourses.includes(courseId);
+  const isEnrolled = enrolledCourses.some((id) => String(id) === String(courseId));
 
   // ── Progress calculation ──
-  const completedModuleIds = progress[courseId] || [];
+  const completedModuleIds = progress[String(courseId)] || [];
   const totalCount = course.modules.length;
   const completedCount = completedModuleIds.length;
   const progressPercent = totalCount > 0
@@ -189,7 +190,15 @@ function CourseDetails({ enrolledCourses, progress, onEnroll, onModuleToggle }) 
               <div className="border-t border-gray-100" />
 
               <button
-                onClick={() => !isEnrolled && onEnroll(user?._id, courseId)}
+                onClick={() => {
+                  if (isEnrolled) return;
+                  if (!user?._id) {
+                    setPendingEnrollment(courseId);
+                    navigate("/login");
+                    return;
+                  }
+                  onEnroll(user._id, courseId);
+                }}
                 className={`w-full font-bold py-3 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer ${
                   isEnrolled ? "bg-blue-600 hover:bg-blue-700 text-white" : "bg-green-600 hover:bg-green-700 text-white"
                 }`}

@@ -1,4 +1,5 @@
 const Enrollment = require("../models/Enrollment");
+const connectDB = require("../config/db");
 
 // POST /api/enrollments/enroll
 exports.enrollCourse = async (req, res) => {
@@ -9,9 +10,18 @@ exports.enrollCourse = async (req, res) => {
       return res.status(400).json({ message: "userId and courseId are required" });
     }
 
+    if (!connectDB.isMongoAvailable()) {
+      return res.status(503).json({
+        message: "Database unavailable — enrollments require MongoDB.",
+      });
+    }
+
     const alreadyEnrolled = await Enrollment.findOne({ userId, courseId });
     if (alreadyEnrolled) {
-      return res.status(200).json(alreadyEnrolled); // return existing enrollment
+      const populated = await Enrollment.findById(alreadyEnrolled._id).populate(
+        "courseId"
+      );
+      return res.status(200).json(populated);
     }
 
     const enrollment = new Enrollment({
@@ -21,7 +31,8 @@ exports.enrollCourse = async (req, res) => {
     });
 
     await enrollment.save();
-    res.status(201).json(enrollment);
+    const populated = await Enrollment.findById(enrollment._id).populate("courseId");
+    res.status(201).json(populated);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -31,6 +42,12 @@ exports.enrollCourse = async (req, res) => {
 exports.completeModule = async (req, res) => {
   try {
     const { userId, courseId, moduleId } = req.body;
+
+    if (!connectDB.isMongoAvailable()) {
+      return res.status(503).json({
+        message: "Database unavailable — cannot update progress without MongoDB.",
+      });
+    }
 
     const enrollment = await Enrollment.findOne({ userId, courseId });
     if (!enrollment) {
@@ -58,6 +75,10 @@ exports.completeModule = async (req, res) => {
 exports.getUserEnrollments = async (req, res) => {
   try {
     const { userId } = req.params;
+
+    if (!connectDB.isMongoAvailable()) {
+      return res.json([]);
+    }
 
     const enrollments = await Enrollment.find({ userId }).populate("courseId");
     res.json(enrollments);

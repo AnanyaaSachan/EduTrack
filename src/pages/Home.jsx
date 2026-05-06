@@ -148,7 +148,9 @@ function Home({ enrolledCourses = [] }) {
                     <CourseCard
                       key={course._id}
                       course={course}
-                      isEnrolled={enrolledCourses.includes(course._id)}
+                      isEnrolled={enrolledCourses.some(
+                        (id) => String(id) === String(course._id)
+                      )}
                     />
                   ))}
                 </div>

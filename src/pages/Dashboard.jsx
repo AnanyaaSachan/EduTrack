@@ -27,13 +27,15 @@ function Dashboard({ enrollments, progress, onLoadEnrollments }) {
   // Stats
   const totalCourses = myCourses.length;
   const completedCourses = myCourses.filter((c) => {
-    const completed = progress[c._id]?.length || 0;
+    const key = String(c._id);
+    const completed = progress[key]?.length || 0;
     return completed === c.modules.length && c.modules.length > 0;
   }).length;
   const overallProgress = totalCourses > 0
     ? Math.floor(
         myCourses.reduce((sum, c) => {
-          const completed = progress[c._id]?.length || 0;
+          const key = String(c._id);
+          const completed = progress[key]?.length || 0;
           const total = c.modules.length;
           return sum + (total > 0 ? (completed / total) * 100 : 0);
         }, 0) / totalCourses
@@ -106,7 +108,7 @@ function Dashboard({ enrollments, progress, onLoadEnrollments }) {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
               {myCourses.map((course) => {
-                const completedCount = progress[course._id]?.length || 0;
+                const completedCount = progress[String(course._id)]?.length || 0;
                 const totalCount = course.modules.length;
                 const progressPercent = totalCount > 0
                   ? Math.floor((completedCount / totalCount) * 100)

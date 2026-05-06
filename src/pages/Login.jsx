@@ -3,10 +3,13 @@ import { Link, useNavigate } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
 import { loginUser } from "../services/api";
 
-function Login({ onLoadEnrollments }) {
-  const { login } = useAuth();
+function Login({ onLoadEnrollments, onEnroll }) {
+  const { login, getPendingEnrollment } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: "", email: "" });
+  const [form, setForm] = useState({
+    name: "Ananya Sachan",
+    email: "ananyasachan0820@gmail.com",
+  });
   const [error, setError] = useState("");
 
   const handleChange = (e) => {
@@ -24,9 +27,20 @@ function Login({ onLoadEnrollments }) {
       const userData = await loginUser(form.name.trim(), form.email.trim());
       login(userData);
       await onLoadEnrollments(userData._id);
+
+      // Check if user was trying to enroll in a course before login
+      const pendingCourseId = getPendingEnrollment();
+      if (pendingCourseId && onEnroll) {
+        await onEnroll(userData._id, pendingCourseId);
+      }
+      
       navigate("/dashboard");
     } catch (err) {
-      setError("Login failed. Please try again.");
+      const msg =
+        err?.message?.includes("fetch") || err?.name === "TypeError"
+          ? "Cannot reach the server. Start the backend (port 5000) and refresh."
+          : err?.message || "Login failed. Please try again.";
+      setError(msg);
     }
   };
 

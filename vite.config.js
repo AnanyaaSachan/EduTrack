@@ -7,4 +7,13 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  server: {
+    proxy: {
+      // Browser → Vite → Express (same origin in dev, no CORS issues)
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
+    },
+  },
 })

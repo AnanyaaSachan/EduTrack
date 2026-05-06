@@ -12,17 +12,24 @@ import NotFound from './pages/NotFound';
 import { fetchUserEnrollments, enrollInCourse, toggleModuleComplete } from './services/api';
 import './index.css';
 
+function enrollmentCourseId(e) {
+  const id = e.courseId?._id ?? e.courseId;
+  return id != null ? String(id) : null;
+}
+
 function AppContent() {
   // enrollments: [{ _id, courseId: {...}, completedModules: [...] }]
   const [enrollments, setEnrollments] = useState([]);
 
-  // Derived: list of enrolled course IDs
-  const enrolledCourseIds = enrollments.map((e) => e.courseId?._id || e.courseId);
+  // Derived: list of enrolled course IDs (strings for reliable comparison)
+  const enrolledCourseIds = enrollments
+    .map(enrollmentCourseId)
+    .filter(Boolean);
 
   // Derived: progress map { courseId: [moduleId, ...] }
   const progress = enrollments.reduce((acc, e) => {
-    const cId = e.courseId?._id || e.courseId;
-    acc[cId] = e.completedModules || [];
+    const cId = enrollmentCourseId(e);
+    if (cId) acc[cId] = e.completedModules || [];
     return acc;
   }, {});
 
@@ -40,8 +47,9 @@ function AppContent() {
   const handleEnroll = async (userId, courseId) => {
     try {
       const enrollment = await enrollInCourse(userId, courseId);
+      const cid = String(courseId);
       setEnrollments((prev) => {
-        const exists = prev.find((e) => (e.courseId?._id || e.courseId) === courseId);
+        const exists = prev.some((e) => enrollmentCourseId(e) === cid);
         if (exists) return prev;
         return [...prev, enrollment];
       });
@@ -54,9 +62,10 @@ function AppContent() {
   const handleModuleToggle = async (userId, courseId, moduleId) => {
     try {
       const updated = await toggleModuleComplete(userId, courseId, moduleId);
+      const cid = String(courseId);
       setEnrollments((prev) =>
         prev.map((e) =>
-          (e.courseId?._id || e.courseId) === courseId
+          enrollmentCourseId(e) === cid
             ? { ...e, completedModules: updated.completedModules }
             : e
         )
@@ -109,7 +118,7 @@ function AppContent() {
         </Route>
 
         {/* Auth routes */}
-        <Route path="/login" element={<Login onLoadEnrollments={loadEnrollments} />} />
+        <Route path="/login" element={<Login onLoadEnrollments={loadEnrollments} onEnroll={handleEnroll} />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
