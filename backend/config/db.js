@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 
 let mongoAvailable = false;
-
+ 
 const tryConnect = async (uri) => {
   await mongoose.connect(uri, {
     serverSelectionTimeoutMS: 8000,
