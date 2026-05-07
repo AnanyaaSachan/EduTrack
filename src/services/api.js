@@ -2,7 +2,7 @@
 // Prod: set VITE_API_URL in .env (e.g. https://your-api.com/api) or defaults below.
 const BASE_URL =
   (import.meta.env.VITE_API_URL?.replace(/\/$/, "") ||
-    (import.meta.env.DEV ? "/api" : "http://localhost:5000/api"));
+    (import.meta.env.DEV ? "/api" : "https://edutrack-1-zux5.onrender.com/api"));
 
 // ── Auth ──
 export const loginUser = async (name, email) => {
